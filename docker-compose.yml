@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: denkraum
+      POSTGRES_USER: denkraum
+      POSTGRES_PASSWORD: denkraum
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U denkraum -d denkraum"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=denkraum;Username=denkraum;Password=denkraum
+      Ollama__BaseUrl: ${OLLAMA_BASE_URL:-https://ollama.com}
+      Ollama__ApiKey: ${OLLAMA_API_KEY}
+      Ollama__ChatModel: ${OLLAMA_CHAT_MODEL:-llama3.1}
+      Ollama__EmbeddingModel: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      Indexing__DataDirectory: /app/data
+      Indexing__BatchSize: 16
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  postgres-data:
